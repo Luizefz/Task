@@ -46,7 +46,7 @@ export default function App() {
         <Stack.Screen options={{ headerShown: false }} name="Initial" component={Initial} />
         <Stack.Screen options={{ headerBackVisible: true, headerTitle: ''}} name="Login" component={Login} />
         <Stack.Screen options={{ headerBackVisible: true, headerTitle: ''}} name="Cadastro" component={Cadastro} />
-        <Stack.Screen options={{ headerBackVisible: false, }} name="Home" component={Home} />
+        <Stack.Screen options={{ headerBackVisible: false, headerTitleStyle: {fontFamily: 'Poppins_500Medium', fontSize: 21, fontWeight: undefined} }} name="Home" component={Home} />
       </Stack.Navigator>
 
       <StatusBar style="light" />

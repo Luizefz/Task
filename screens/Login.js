@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, SafeAreaView, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, TextInput, TouchableOpacity, Modal, ActivityIndicator} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-simple-toast';
 import React, { useState } from 'react';
@@ -10,7 +10,7 @@ const Login = () => {
 
     const [email, SetEmail] = useState('')
     const [password, SetPassword] = useState('')
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false)
 
     const goCadastro = () => {
         console.log("Login.Screen | btn-cadastrar, navigating to Register Screen");
@@ -49,6 +49,21 @@ const Login = () => {
         <SafeAreaView>
             <ScrollView>
                 <View style={styles.container}>
+
+                    <Modal
+                        animationType="fade"
+                        transparent={true}
+                        visible={loading}
+                        onRequestClose={() => {
+                            console.log("Modal has been closed.");
+                            setLoading(false);
+                        }}
+                    >
+                        <View style={styles.modalView}>
+                            <ActivityIndicator color={'#F2F8EE'} size={'large'} />
+                        </View>
+
+                    </Modal>
 
                     <View style={styles.header}>
                         <Text style={styles.headerText}>Preencha os campos abaixo para realizar o Login.</Text>
@@ -101,6 +116,22 @@ const styles = StyleSheet.create({
         paddingVertical: '10%',
         paddingHorizontal: '5%'
     },
+    modalView: {
+        top: '40%',
+        padding: 30,
+        alignSelf: 'center',
+        alignItems: "center",
+        backgroundColor: "#000",
+        borderRadius: 16,
+        shadowColor: "#000",
+        shadowOffset: {
+          width: 0,
+          height: 2
+        },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
+        elevation: 5
+      },
     header: {
         marginBottom: '20%'
     },
