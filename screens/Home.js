@@ -1,16 +1,22 @@
-import { StyleSheet, Text, View, Image, TouchableOpacity, Modal, ActivityIndicator, FlatList, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Image, TouchableOpacity, Modal, ActivityIndicator, FlatList, Dimensions, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, cleanup, useState, useLayoutEffect } from 'react';
 import Toast from 'react-native-simple-toast';
 import { auth, db } from '../firebase';
 import * as firebase from 'firebase'
+import * as Animatable from 'react-native-animatable';
+import BouncyCheckbox from "react-native-bouncy-checkbox";
+
 
 const Home = () => {
+
+    //MyCustomComponent = Animatable.createAnimatableComponent(MyCustomComponent);
 
     const user = firebase.auth().currentUser;
     const navigation = useNavigation();
     const [tasks, setTasks] = useState();
     const [loading, setLoading] = useState(true)
+    const [refreshing, setRefreshing] = useState(false);
 
     const SingOut = () => {
         auth.signOut()
@@ -23,16 +29,17 @@ const Home = () => {
 
     const getTasks = async () => {
         const snapshot = await
-            db.collection(/*`${user.uid}`*/'filtros')
+            db.collection(`${user.uid}`)
                 .get()
                 .then(querySnapshot => {
                     console.log('Total tasks: ', querySnapshot.size);
+                    console.log(`${user.uid}`)
 
                     const docList = []
 
                     if (querySnapshot.size == 0) {
                         setLoading(false)
-                        Toast.show('Nenhum task adicionada.', Toast.LONG);
+                        Toast.show('Nenhuma task adicionada.', Toast.LONG);
 
                     }
 
@@ -45,16 +52,77 @@ const Home = () => {
                 });
     }
 
-    const _renderItem = ({ item, index }) => {
+    const saveTask = () => {
+        db.collection(`${user.uid}`).doc('Fazer Compras').set({
+            nome: 'Fazer Compras',
+        })
+            .then((docRef) => {
+                console.log("Document written with ID: ", `${filme.id}`);
+            })
+            .catch((error) => {
+                Toast.show('Algo deu errado. ', error);
+                console.error("Error adding document: ", error);
+            });
+    }
+
+    const deleteTask = (item) => {
+        db.collection(`${user.uid}`).doc('Fazer Compras').delete().then(() => {
+            Toast.show('Task Removida!');
+            getTasks();
+            console.log("Document successfully deleted!");
+        }).catch((error) => {
+            Toast.show('Algo deu errado. ', error, Toast.LONG);
+            console.error("Error removing document: ", error);
+        });
+    }
+
+    const filters = [
+        {
+            id: "bd7acbea-c1b1-46c2-aed5-3ad53abb28ba",
+            nome: "A - Z",
+        },
+        {
+            id: "3ac68afc-c605-48d3-a4f8-fbd91aa97f63",
+            nome: "Z - A",
+        },
+        {
+            id: "58694a0f-3da1-471f-bd96-145571e29d72",
+            nome: "Mais Antigos",
+        },
+        {
+            id: "bd7acbea-c1b1-46c2-aed5-3ad53cbb28ba",
+            nome: "Mais Recente",
+        },
+    ]
+
+    const _renderFilterItem = ({ item, index }) => {
         return (
-            <View style={{flexDirection: 'row', paddingRight: 8}}>
+            <Animatable.View animation="fadeIn" direction="alternate" style={{ paddingRight: 8 }}>
                 <TouchableOpacity style={styles.filtros}>
                     <Text style={styles.textFiltros}>{item.nome}</Text>
                 </TouchableOpacity>
-            </View>
+            </Animatable.View>
         )
     };
 
+    const _renderTaskItem = ({ item, index }) => {
+        return (
+            <Animatable.View animation="fadeIn" direction="alternate" key={index}>
+                <View style={styles.tasks}>
+                    <BouncyCheckbox
+                        size={25}
+                        fillColor="#009688"
+                        //unfillColor="#FFFFFF"
+                        text={item.nome}
+                        iconStyle={{ borderColor: "#009688" }}
+                        textStyle={styles.textFiltros}
+                        //onPress={(isChecked: boolean) => { }}
+                    />
+                    <Text style={styles.textFiltros} onPress={() => deleteTask(item)}>Excluir</Text>
+                </View>
+            </Animatable.View>
+        )
+    };
     useEffect(() => {
         const refresh = navigation.addListener('focus', () => {
             getTasks();
@@ -67,7 +135,7 @@ const Home = () => {
             title: `Olá, ${user.displayName}!`,
             headerRight: () => (
                 <View>
-                    <TouchableOpacity style={styles.logOutButton} onPress={() => SingOut()}>
+                    <TouchableOpacity style={styles.logOutButton} onPress={() => saveTask()}>
                         <Image style={styles.logOutIcon} source={require('../assets/logout.png')} />
                     </TouchableOpacity>
 
@@ -77,7 +145,7 @@ const Home = () => {
     }, []);
 
     return (
-        <View style={ styles.container }>
+        <View style={styles.container}>
             <Modal
                 animationType="fade"
                 transparent={true}
@@ -93,16 +161,21 @@ const Home = () => {
             </Modal>
 
             <FlatList
-            style={styles.taskFilter}
-            data={tasks}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            renderItem={_renderItem}
+                style={styles.taskFilter}
+                data={filters}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                renderItem={_renderFilterItem}
             />
 
             <FlatList
-            style={ styles.taskList }
-
+                style={styles.taskList}
+                data={tasks}
+                renderItem={_renderTaskItem}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={getTasks} />
+                }
+                keyExtractor={(item) => item.key}
             />
         </View>
     );
@@ -147,9 +220,11 @@ const styles = StyleSheet.create({
         elevation: 5
     },
     taskFilter: {
+        backgroundColor: '#000',
         marginVertical: 20,
         paddingLeft: 10,
-        height: 65
+        height: 65,
+        elevation: 4
     },
     textFiltros: {
         color: '#F2F8EE',
@@ -160,13 +235,20 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         height: '100%',
         justifyContent: 'center'
-        
-    },  
+
+    },
     taskList: {
         backgroundColor: '#252525',
         borderRadius: 30,
         borderBottomLeftRadius: 0,
         borderBottomRightRadius: 0,
         height: Dimensions.get('window').height
+    },
+    tasks: {
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        padding: 30,
+        flexDirection: 'row',
+        justifyContent: 'space-between'
     },
 });
