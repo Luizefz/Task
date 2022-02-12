@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, cleanup } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View, Image, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AppLoading from 'expo-app-loading';
@@ -31,7 +31,7 @@ const Initial = () => {
 
     return unsubscribe
 
-  }, [])
+  }, [cleanup])
 
   return (
 

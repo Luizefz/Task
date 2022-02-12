@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Image, TouchableOpacity, Modal, ActivityIndicator, FlatList, Dimensions, RefreshControl } from 'react-native';
+import { StyleSheet, Text, View, Image, TouchableOpacity, Modal, ActivityIndicator, FlatList, Dimensions, RefreshControl, TextInput, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState, useLayoutEffect, useEffect, cleanup } from 'react';
 import Toast from 'react-native-simple-toast';
@@ -15,7 +15,8 @@ const Home = () => {
     const navigation = useNavigation();
     const [nome, setNome] = useState();
     const [tasks, setTasks] = useState();
-    const [loading, setLoading] = useState(true)
+    const [addTaskVisible, setAddTaskVisible] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     const SingOut = () => {
@@ -28,6 +29,8 @@ const Home = () => {
     }
 
     const getTasks = async () => {
+        setLoading(false)
+        setRefreshing(true)
         const snapshot = await
             db.collection(`${user.uid}`)
                 .get()
@@ -38,8 +41,9 @@ const Home = () => {
 
                     if (querySnapshot.size == 0) {
                         setLoading(false)
-                        setTasks([])
-                        Toast.show('Nenhuma task adicionada.', Toast.LONG);
+                        setRefreshing(false)
+                        setTasks(null)
+                        Toast.show('Nenhuma task adicionada.');
 
                     }
 
@@ -48,25 +52,32 @@ const Home = () => {
 
                         setTasks(docList)
                         setLoading(false)
+                        setRefreshing(false)
                     });
                 });
     }
 
     const saveTask = () => {
+        if (nome == null) {
+            Toast.show('Por favor, preencha o campo abaixo');
+        } else {
+        setAddTaskVisible(false)
         db.collection(`${user.uid}`).add({
         })
             .then((docRef) => {
                 db.collection(`${user.uid}`).doc(docRef.id).set({
                     id: docRef.id,
-                    nome: 'Jantar o Macarrão',
+                    nome: nome,
                     criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
                 })
-                getTasks()
+                getTasks(),
+                setNome()           
             })
             .catch((error) => {
                 Toast.show('Algo deu errado. ', error);
                 console.error("Error adding document: ", error);
             });
+        }
     }
 
     const deleteTask = (item) => {
@@ -96,7 +107,11 @@ const Home = () => {
         },
         {
             id: "bd7acbea-c1b1-46c2-aed5-3ad53cbb28ba",
-            nome: "Mais Recente",
+            nome: "Mais Recentes",
+        },
+        {
+            id: "bd7acbea-c1b1-46c2-aed5-3ad53cbbdadw",
+            nome: "Concluídas"
         },
     ]
 
@@ -117,13 +132,13 @@ const Home = () => {
                     <BouncyCheckbox
                         size={25}
                         fillColor="#009688"
-                        //unfillColor="#FFFFFF"
                         text={item.nome}
                         iconStyle={{ borderColor: "#009688" }}
                         textStyle={styles.textFiltros}
-                    //onPress={(isChecked: boolean) => { }}
                     />
-                    <Text style={[styles.textFiltros, { fontWeight: 'bold' }]} onPress={() => deleteTask(item)}>@</Text>
+                    <TouchableOpacity onPress={() => deleteTask(item)}>
+                        <Image style={styles.removeIcon} source={require('../assets/removeIcon.png')} />
+                    </TouchableOpacity>
                 </View>
             </Animatable.View>
         )
@@ -131,24 +146,24 @@ const Home = () => {
 
     const ItemSeparatorView = () => {
         return (
-          // Flat List Item Separator
-          <View
-            style={{
-              height: 0.5,
-              width: '90%',
-              alignSelf: 'center',
-              backgroundColor: '#3a3a3a',
-            }}
-          />
+            // Flat List Item Separator
+            <View
+                style={{
+                    height: 0.5,
+                    width: '90%',
+                    alignSelf: 'center',
+                    backgroundColor: '#3a3a3a',
+                }}
+            />
         );
-      };
+    };
 
     useEffect(() => {
         const refresh = navigation.addListener('focus', () => {
             getTasks();
         });
         return refresh;
-    }, [cleanup]);
+    }, []);
 
     useLayoutEffect(() => {
         navigation.setOptions({
@@ -174,36 +189,75 @@ const Home = () => {
                     console.log("Modal has been closed.");
                     setLoading(false);
                 }}
+
             >
                 <View style={styles.modalView}>
                     <ActivityIndicator color={'#F2F8EE'} size={'large'} />
                 </View>
             </Modal>
 
-            <TouchableOpacity style={styles.plusButton} onPress={() => saveTask()}>
+
+            <Modal
+                animationType='slide'
+                transparent={true}
+                visible={addTaskVisible}
+                onRequestClose={() => {
+                    setAddTaskVisible(false);
+                }}
+            >
+                <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(), setAddTaskVisible(false) }}>
+                    <View style={styles.fullModal}>
+                        <View style={styles.addTaskModal}>
+                            <TextInput
+                                selectionColor={"#F2F8EE"}
+                                style={styles.input}
+                                value={nome}
+                                onChangeText={text => setNome(text)}
+                                onSubmitEditing={() => saveTask()}
+
+                                autoFocus
+                            />
+
+                            <TouchableOpacity style={styles.sendButton} onPress={() => saveTask()}>
+                                <Image style={styles.sendIcon} source={require('../assets/sendIcon.png')} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
+
+            <KeyboardAvoidingView behaviour="padding" enabled={false}>
+
+
+
+                <FlatList
+                    style={styles.taskFilter}
+                    data={filters}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    renderItem={_renderFilterItem}
+                />
+
+                <FlatList
+                    style={styles.taskList}
+                    data={tasks}
+                    renderItem={_renderTaskItem}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={getTasks} />
+                    }
+                    keyExtractor={item => item.id}
+                    extraData={tasks}
+                    ItemSeparatorComponent={ItemSeparatorView}
+                />
+            </KeyboardAvoidingView>
+            
+            {!addTaskVisible && (
+            <TouchableOpacity style={styles.plusButton} onPress={() => setAddTaskVisible(true)}>
                 <Image source={require('../assets/plusIcon.png')} style={styles.plusIcon} />
             </TouchableOpacity>
+            )}
+        </View >
 
-            <FlatList
-                style={styles.taskFilter}
-                data={filters}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                renderItem={_renderFilterItem}
-            />
-            
-            <FlatList
-                style={styles.taskList}
-                data={tasks}
-                renderItem={_renderTaskItem}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={getTasks} />
-                }
-                keyExtractor={item => item.id}
-                extraData={tasks}
-                ItemSeparatorComponent={ItemSeparatorView}
-            />
-        </View>
     );
 };
 
@@ -245,6 +299,10 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
     },
+    removeIcon: {
+        width: 25,
+        height: 25,
+    },
     modalView: {
         top: '40%',
         padding: 30,
@@ -261,12 +319,46 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 5
     },
+    fullModal: {
+        height: '100%'
+    },
+    addTaskModal: {
+        paddingHorizontal: 10,
+        marginTop: 'auto',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+        height: 60,
+        backgroundColor: '#000',
+        borderTopRightRadius: 30,
+        borderTopLeftRadius: 30,
+    },
+    input: {
+        height: '70%',
+        width: '78%',
+        paddingHorizontal: 25,
+        fontSize: 18,
+        borderRadius: 30,
+        backgroundColor: 'grey',
+        color: '#F2F8EE'
+    },
+    sendIcon: {
+        height: 30,
+        width: 30,
+    },
+    sendButton: {
+        height: '75%',
+        width: 80,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#009688',
+        borderRadius: 18,
+    },
     taskFilter: {
         backgroundColor: '#000',
-        marginVertical: 20,
         paddingLeft: 10,
         height: 65,
-        elevation: 4
     },
     textFiltros: {
         color: '#F2F8EE',
@@ -277,9 +369,9 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         height: '100%',
         justifyContent: 'center'
-
     },
     taskList: {
+        marginTop: 10,
         backgroundColor: '#252525',
         borderRadius: 30,
         borderBottomLeftRadius: 0,
