@@ -6,7 +6,6 @@ import { auth, db } from '../firebase';
 import * as firebase from 'firebase'
 import * as Animatable from 'react-native-animatable';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
-import uuid from 'react-native-uuid';
 
 
 const Home = () => {
@@ -61,22 +60,22 @@ const Home = () => {
         if (nome == null) {
             Toast.show('Por favor, preencha o campo abaixo');
         } else {
-        setAddTaskVisible(false)
-        db.collection(`${user.uid}`).add({
-        })
-            .then((docRef) => {
-                db.collection(`${user.uid}`).doc(docRef.id).set({
-                    id: docRef.id,
-                    nome: nome,
-                    criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-                })
-                getTasks(),
-                setNome()           
+            setAddTaskVisible(false)
+            db.collection(`${user.uid}`).add({
             })
-            .catch((error) => {
-                Toast.show('Algo deu errado. ', error);
-                console.error("Error adding document: ", error);
-            });
+                .then((docRef) => {
+                    db.collection(`${user.uid}`).doc(docRef.id).set({
+                        id: docRef.id,
+                        nome: nome,
+                        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                    })
+                    setTimeout(getTasks, 500)
+                    setNome()
+                })
+                .catch((error) => {
+                    Toast.show('Algo deu errado. ', error);
+                    console.error("Error adding document: ", error);
+                });
         }
     }
 
@@ -94,30 +93,30 @@ const Home = () => {
 
     const filters = [
         {
-            id: "bd7acbea-c1b1-46c2-aed5-3ad53abb28ba",
+            id: "1",
             nome: "A - Z",
         },
         {
-            id: "3ac68afc-c605-48d3-a4f8-fbd91aa97f63",
+            id: "2",
             nome: "Z - A",
         },
         {
-            id: "58694a0f-3da1-471f-bd96-145571e29d72",
+            id: "3",
             nome: "Mais Antigos",
         },
         {
-            id: "bd7acbea-c1b1-46c2-aed5-3ad53cbb28ba",
+            id: "4",
             nome: "Mais Recentes",
         },
         {
-            id: "bd7acbea-c1b1-46c2-aed5-3ad53cbbdadw",
+            id: "5",
             nome: "Concluídas"
         },
     ]
 
     const _renderFilterItem = ({ item }) => {
         return (
-            <Animatable.View animation="fadeIn" direction="alternate" style={{ paddingRight: 8 }}>
+            <Animatable.View animation="fadeIn" style={{ paddingRight: 8 }}>
                 <TouchableOpacity style={styles.filtros}>
                     <Text style={styles.textFiltros}>{item.nome}</Text>
                 </TouchableOpacity>
@@ -125,18 +124,18 @@ const Home = () => {
         )
     };
 
-    const _renderTaskItem = ({ item }) => {
+    const _renderTaskItem = ({ item, index }) => {
         return (
-            <Animatable.View animation="fadeIn" >
+            <Animatable.View animation="fadeIn" delay={index * 100}>
                 <View style={styles.tasks}>
                     <BouncyCheckbox
                         size={25}
                         fillColor="#009688"
                         text={item.nome}
                         iconStyle={{ borderColor: "#009688" }}
-                        textStyle={styles.textFiltros}
+                        textStyle={[styles.textFiltros, { width: Dimensions.get('window').width - 120, flex: 1 }]}
                     />
-                    <TouchableOpacity onPress={() => deleteTask(item)}>
+                    <TouchableOpacity style={{ alignSelf: 'center' }} onPress={() => deleteTask(item)}>
                         <Image style={styles.removeIcon} source={require('../assets/removeIcon.png')} />
                     </TouchableOpacity>
                 </View>
@@ -228,8 +227,6 @@ const Home = () => {
 
             <KeyboardAvoidingView behaviour="padding" enabled={false}>
 
-
-
                 <FlatList
                     style={styles.taskFilter}
                     data={filters}
@@ -238,23 +235,27 @@ const Home = () => {
                     renderItem={_renderFilterItem}
                 />
 
-                <FlatList
-                    style={styles.taskList}
-                    data={tasks}
-                    renderItem={_renderTaskItem}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={getTasks} />
-                    }
-                    keyExtractor={item => item.id}
-                    extraData={tasks}
-                    ItemSeparatorComponent={ItemSeparatorView}
-                />
             </KeyboardAvoidingView>
-            
+
+            <FlatList
+                style={styles.taskList}
+                data={tasks}
+                renderItem={_renderTaskItem}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={getTasks} />
+                }
+                keyExtractor={item => item.id}
+                extraData={tasks}
+                ItemSeparatorComponent={ItemSeparatorView}
+                contentContainerStyle={{
+                    flexGrow: 1,
+                }}
+            />
+
             {!addTaskVisible && (
-            <TouchableOpacity style={styles.plusButton} onPress={() => setAddTaskVisible(true)}>
-                <Image source={require('../assets/plusIcon.png')} style={styles.plusIcon} />
-            </TouchableOpacity>
+                <TouchableOpacity style={styles.plusButton} onPress={() => setAddTaskVisible(true)}>
+                    <Image source={require('../assets/plusIcon.png')} style={styles.plusIcon} />
+                </TouchableOpacity>
             )}
         </View >
 
